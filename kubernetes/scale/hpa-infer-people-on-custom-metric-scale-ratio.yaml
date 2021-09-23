@@ -1,0 +1,21 @@
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ei-infer-people-app
+  namespace: default
+  selfLink: /apis/autoscaling/v2beta2/namespaces/default/horizontalpodautoscalers/ei-infer-people-app
+spec:
+  maxReplicas: 4
+  metrics:
+  - type: Pods
+    pods:
+      metric:
+        name: ei_scale_ratio
+      target:
+        type: AverageValue
+        averageValue: 1
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ei-infer-people-app

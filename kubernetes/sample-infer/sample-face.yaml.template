@@ -1,0 +1,61 @@
+######################################################################
+# Sample Frame producer from video file to demostrate face detection.
+# The video file is from https://github.com/intel-iot-devkit/sample-videos/blob/master/head-pose-face-detection-female-and-male.mp4
+######################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-sample-face-fp32-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-sample-face-fp32
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-sample-face-fp32
+    spec:
+      containers:
+      - name: ei-fss
+        image: your-own-registry/ei-file-stream-service
+        env:
+        - name: VIDEO_FILE
+          value: head-pose-face-detection-female-and-male.mp4
+        - name: QUEUE_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: face-fp32
+      initContainers:
+        - name: init-sample-face-fp32-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-sample-face-int8-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-sample-face-int8
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-sample-face-int8
+    spec:
+      containers:
+      - name: ei-fss
+        image: your-own-registry/ei-file-stream-service
+        env:
+        - name: VIDEO_FILE
+          value: head-pose-face-detection-female-and-male.mp4
+        - name: QUEUE_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: face-int8
+      initContainers:
+        - name: init-sample-face-int8-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']

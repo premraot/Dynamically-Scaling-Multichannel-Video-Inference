@@ -1,0 +1,414 @@
+############################################
+# Redis deployment
+############################################
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ei-redis-config
+data:
+  redis.conf: |
+    notify-keyspace-events "Es"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ei-redis
+  template:
+    metadata:
+      labels:
+        app: ei-redis
+    spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: ei-redis-config
+      containers:
+      - image: redis:6.0
+        name: redis
+        command: ["redis-server"]
+        args: ["/etc/redis.conf","--protected-mode no"]
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/redis.conf
+            subPath: redis.conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-redis-svc
+spec:
+  type: NodePort
+  ports:
+  - port: 6379
+    targetPort: 6379
+    nodePort: 31003
+  selector:
+    app: ei-redis
+---
+############################################
+# Inference service for face recoginition
+# The inference model is https://docs.openvinotoolkit.org/2019_R2/_intel_models_face_detection_retail_0005_description_face_detection_retail_0005.html
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-infer-face-int8-app
+  labels:
+    app: ei-infer-face-int8-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ei-infer-face-int8-app
+  template:
+    metadata:
+      labels:
+        app: ei-infer-face-int8-app
+    spec:
+      containers:
+      - name: ei-infer-face-int8-app
+        image: your-own-registry/ei-inference-service
+        env:
+        - name: INFER_MODEL_NAME
+          value: "face-detection-retail-0005_INT8"
+        - name: INPUT_QUEUE_HOST
+          value: ei-redis-svc
+        - name: OUTPUT_BROKER_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: face-int8
+        ports:
+        - name: web
+          containerPort: 8000
+      initContainers:
+        - name: init-infer-face-int8-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-infer-face-int8-app
+  labels:
+    app: ei-infer-face-int8-app
+spec:
+  ports:
+    - name: web
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: ei-infer-face-int8-app
+---
+############################################
+# Inference service for face recoginition
+# The inference model is https://docs.openvinotoolkit.org/2019_R2/_intel_models_face_detection_retail_0005_description_face_detection_retail_0005.html
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-infer-face-fp32-app
+  labels:
+    app: ei-infer-face-fp32-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ei-infer-face-fp32-app
+  template:
+    metadata:
+      labels:
+        app: ei-infer-face-fp32-app
+    spec:
+      containers:
+      - name: ei-infer-face-fp32-app
+        image: your-own-registry/ei-inference-service
+        env:
+        - name: INFER_MODEL_NAME
+          value: "face-detection-retail-0005_FP32"
+        - name: INPUT_QUEUE_HOST
+          value: ei-redis-svc
+        - name: OUTPUT_BROKER_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: face-fp32
+        ports:
+        - name: web
+          containerPort: 8000
+      initContainers:
+        - name: init-infer-face-fp32-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-infer-face-fp32-app
+  labels:
+    app: ei-infer-face-fp32-app
+spec:
+  ports:
+    - name: web
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: ei-infer-face-fp32-app
+---
+############################################
+# Inference service for people recoginition
+# The inference model is https://github.com/intel/Edge-optimized-models/tree/master/SqueezeNet%205-Class%20detection
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-infer-people-app
+  labels:
+    app: ei-infer-people-app
+spec:
+  selector:
+    matchLabels:
+      app: ei-infer-people-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-infer-people-app
+    spec:
+      containers:
+      - name: ei-infer-people-app
+        image: your-own-registry/ei-inference-service
+        env:
+        - name: INFER_MODEL_NAME
+          value: "SqueezeNetSSD-5Class"
+        - name: INPUT_QUEUE_HOST
+          value: ei-redis-svc
+        - name: OUTPUT_BROKER_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: people
+        ports:
+        - name: web
+          containerPort: 8000
+      initContainers:
+        - name: init-infer-people-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-infer-people-app
+  labels:
+    app: ei-infer-people-app
+spec:
+  ports:
+  - name: web
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: ei-infer-people-app
+---
+############################################
+# Inference service for car recoginition
+# The inference model is https://docs.openvinotoolkit.org/2019_R1/_person_vehicle_bike_detection_crossroad_0078_description_person_vehicle_bike_detection_crossroad_0078.html
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-infer-car-int8-app
+  labels:
+    app: ei-infer-car-int8-app
+spec:
+  selector:
+    matchLabels:
+      app: ei-infer-car-int8-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-infer-car-int8-app
+    spec:
+      containers:
+      - name: ei-infer-car-int8-app
+        image: your-own-registry/ei-inference-service
+        env:
+        - name: INFER_MODEL_NAME
+          value: "person-vehicle-bike-detection-crossroad-0078_INT8"
+        - name: INPUT_QUEUE_HOST
+          value: ei-redis-svc
+        - name: OUTPUT_BROKER_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: car-int8
+        ports:
+        - name: web
+          containerPort: 8000
+      initContainers:
+        - name: init-infer-car-int8-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-infer-car-int8-app
+  labels:
+    app: ei-infer-car-int8-app
+spec:
+  ports:
+  - name: web
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: ei-infer-car-int8-app
+---
+############################################
+# Inference service for car recoginition
+# The inference model is https://docs.openvinotoolkit.org/2019_R1/_person_vehicle_bike_detection_crossroad_0078_description_person_vehicle_bike_detection_crossroad_0078.html
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-infer-car-fp32-app
+  labels:
+    app: ei-infer-car-fp32-app
+spec:
+  selector:
+    matchLabels:
+      app: ei-infer-car-fp32-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-infer-car-fp32-app
+    spec:
+      containers:
+      - name: ei-infer-car-fp32-app
+        image: your-own-registry/ei-inference-service
+        env:
+        - name: INFER_MODEL_NAME
+          value: "person-vehicle-bike-detection-crossroad-0078_FP32"
+        - name: INPUT_QUEUE_HOST
+          value: ei-redis-svc
+        - name: OUTPUT_BROKER_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: car-fp32
+        ports:
+        - name: web
+          containerPort: 8000
+      initContainers:
+        - name: init-infer-car-fp32-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-infer-car-fp32-app
+  labels:
+    app: ei-infer-car-fp32-app
+spec:
+  ports:
+  - name: web
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: ei-infer-car-fp32-app
+---
+############################################
+# Websocket server
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-websocket-server-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-websocket-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-websocket-server
+    spec:
+      containers:
+      - name: ei-wss
+        image: your-own-registry/ei-websocket-server
+        ports:
+        - containerPort: 31611
+        env:
+        - name: STREAM_BROKER_REDIS_HOST
+          value: ei-redis-svc
+      initContainers:
+        - name: init-ei-websocket-server
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-websocket-server-svc
+spec:
+  type: NodePort
+  ports:
+    - port: 31611
+      targetPort: 31611
+      nodePort: 31611
+  selector:
+    app: ei-websocket-server
+---
+############################################
+# Gateway server
+############################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-gateway-server-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-gateway-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-gateway-server
+    spec:
+      containers:
+      - name: ei-gws
+        image: your-own-registry/ei-gateway-server
+        ports:
+        - containerPort: 5000
+        env:
+        - name: STREAM_BROKER_HOST
+          value: ei-redis-svc
+        - name: WEBSOCKET_SERVER_HOST
+          value: ei-websocket-server-svc
+      initContainers:
+        - name: init-ei-gateway-server
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ei-gateway-server-svc
+spec:
+  type: NodePort
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 31002
+  selector:
+    app: ei-gateway-server

@@ -1,0 +1,61 @@
+######################################################################
+# Sample Frame producer from video file to demostrate CAR detection.
+# The video file is from https://github.com/intel-iot-devkit/sample-videos/blob/master/person-bicycle-car-detection.mp4
+######################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-sample-car-int8-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-sample-car-int8
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-sample-car-int8
+    spec:
+      containers:
+      - name: ei-fss
+        image: your-own-registry/ei-file-stream-service
+        env:
+        - name: VIDEO_FILE
+          value: person-bicycle-car-detection.mp4
+        - name: QUEUE_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: car-int8
+      initContainers:
+        - name: init-sample-car-int8-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-sample-car-fp32-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-sample-car-fp32
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-sample-car-fp32
+    spec:
+      containers:
+      - name: ei-fss
+        image: your-own-registry/ei-file-stream-service
+        env:
+        - name: VIDEO_FILE
+          value: person-bicycle-car-detection.mp4
+        - name: QUEUE_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: car-fp32
+      initContainers:
+        - name: init-sample-car-fp32-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']

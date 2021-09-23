@@ -1,0 +1,32 @@
+######################################################################
+# Sample Frame producer from video file to demostrate people/body detection.
+# The video file is from https://github.com/intel-iot-devkit/sample-videos/blob/master/face-demographics-walking-and-pause.mp4
+######################################################################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ei-sample-people-deployment
+spec:
+  selector:
+    matchLabels:
+      app: ei-sample-people
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: ei-sample-people
+    spec:
+      containers:
+      - name: ei-fss
+        image: your-own-registry/ei-file-stream-service
+        env:
+        - name: VIDEO_FILE
+          value: face-demographics-walking-and-pause.mp4
+        - name: QUEUE_HOST
+          value: ei-redis-svc
+        - name: INFER_TYPE
+          value: people
+      initContainers:
+        - name: init-sample-people-app
+          image: busybox:1.31
+          command: ['sh', '-c', 'until nslookup ei-redis-svc; do echo waiting for ei-redis-svc; sleep 2; done;']
