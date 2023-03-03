@@ -21,6 +21,7 @@ import sys
 import socket
 import redis
 
+
 # add current path into PYTHONPATH
 APP_PATH = os.path.dirname(__file__)
 sys.path.append(APP_PATH)

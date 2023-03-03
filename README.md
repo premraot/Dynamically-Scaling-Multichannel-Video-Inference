@@ -5,6 +5,7 @@ This solution re-architect traditional monolithic inference pipeline to cloud na
 
 Please get detail from whitepaper ["Dynamically Scaling Video Inference at the Edge using Kubernetes* and Clear Linux* OS"](https://clearlinux.org/blogs-news/dynamically-scaling-video-inference-edge)
 
+
 Please get detail about
 - [inference metrics](doc/inference_metrics.md)
 - [dynamic scale](doc/dynamic_scale.md)

@@ -24,6 +24,7 @@ from multiprocessing import Process
 
 from flask import Flask, jsonify, render_template, make_response, request
 
+
 APP_PATH = os.path.dirname(__file__)
 sys.path.append(APP_PATH)
 
