@@ -1,4 +1,4 @@
-# Edge Multiple Channels Inference Pipeline Solution
+# Dynamically Scaling Video Inference at the Edge using Kubernetes
 
 ## Design Principle
 This solution re-architect traditional monolithic inference pipeline to cloud native model. With OpenVINO library, the inference workload can be scaled vertically on heterogeneous hardware engine; while kubernetes also provide HPA(Horizontal POD Autoscaler) for [horizontal scale](doc/dynamic_scale.md) according to the [collected inference metrics](doc/inference_metrics.md) from the whole system. The flexible scalability in this solution can help to meet with diverse requirements on Edge computing, such as diverse inference model size, diverse input source, etc.
